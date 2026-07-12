@@ -1,0 +1,1659 @@
+/*=========================================================
+  TransitOps Login
+  styles.css - PART 1
+  Layout • Theme • Forms • Responsive
+=========================================================*/
+
+/*==============================
+  ROOT VARIABLES
+==============================*/
+
+:root{
+
+    --primary:#112250;
+    --secondary:#3C5070;
+    --accent:#E0C58F;
+    --surface:#F5F0E9;
+    --muted:#D9CBC2;
+
+    --text-dark:#112250;
+    --text-light:#F5F0E9;
+
+    --radius:20px;
+
+    --shadow:
+        0 25px 60px rgba(0,0,0,.18);
+
+    --transition:.35s cubic-bezier(.2,.8,.2,1);
+
+}
+
+/*==============================
+  RESET
+==============================*/
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+body{
+
+    min-height:100vh;
+
+    overflow:hidden;
+
+    font-family:
+        "Segoe UI",
+        Tahoma,
+        Geneva,
+        Verdana,
+        sans-serif;
+
+    background:var(--primary);
+
+    color:var(--text-light);
+
+}
+
+
+/*==============================
+  PAGE
+==============================*/
+
+.page{
+
+    position:relative;
+
+    min-height:100vh;
+
+    display:flex;
+
+    flex-direction:column;
+
+}
+
+
+
+/*==============================
+  BACKGROUND
+==============================*/
+
+.background{
+
+    position:fixed;
+
+    inset:0;
+
+    overflow:hidden;
+
+    z-index:-2;
+
+    background:
+
+        radial-gradient(circle at top left,
+        #459f41 0%,
+        transparent 35%),
+
+        radial-gradient(circle at bottom right,
+        #d46193 0%,
+        transparent 40%),
+
+        linear-gradient(
+            135deg,
+            #112250,
+            #162d64,
+            #112250
+        );
+
+}
+
+
+
+/* Decorative blobs */
+
+.blob{
+
+    position:absolute;
+
+    border-radius:50%;
+
+    filter:blur(80px);
+
+    opacity:.18;
+
+}
+
+.blob-1{
+
+    width:420px;
+
+    height:420px;
+
+    background:var(--accent);
+
+    top:-120px;
+
+    left:-120px;
+
+}
+
+.blob-2{
+
+    width:360px;
+
+    height:360px;
+
+    background:#5d83cc;
+
+    right:-120px;
+
+    bottom:-100px;
+
+}
+
+
+
+/* Grid Pattern */
+
+.grid{
+
+    position:absolute;
+
+    inset:0;
+
+    opacity:.05;
+
+    background-image:
+
+        linear-gradient(
+            rgba(255,255,255,.25) 1px,
+            transparent 1px
+        ),
+
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,.25) 1px,
+            transparent 1px
+        );
+
+    background-size:50px 50px;
+
+}
+
+
+
+/*==============================
+ HEADER
+==============================*/
+
+.header{
+
+    position:fixed;
+
+    inset:0;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    z-index:50;
+
+    pointer-events:none;
+
+}
+
+
+
+.brand{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:20px;
+
+}
+
+
+
+/* Logo */
+
+.logo{
+
+    width:58px;
+
+    height:58px;
+
+    border-radius:18px;
+
+    background:
+
+        linear-gradient(
+            135deg,
+            var(--accent),
+            #f7e5b7
+        );
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    box-shadow:
+
+        0 15px 35px rgba(0,0,0,.25);
+
+    opacity:0;
+
+}
+
+
+
+.logo span{
+
+    width:22px;
+
+    height:22px;
+
+    border-radius:6px;
+
+    background:var(--primary);
+
+}
+
+
+
+/* Heading */
+
+.brand h1{
+
+    font-size:4.8rem;
+
+    font-weight:700;
+
+    color:var(--surface);
+
+    letter-spacing:-2px;
+
+    text-shadow:
+
+        0 12px 30px rgba(0,0,0,.22);
+
+}
+
+
+
+.brand strong{
+
+    color:var(--accent);
+
+}
+
+
+
+/*==============================
+ MAIN
+==============================*/
+
+main{
+
+    flex:1;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    padding:120px 20px;
+
+}
+
+
+
+/*==============================
+ LOGIN SECTION
+==============================*/
+
+.login-section{
+
+    width:100%;
+
+    display:flex;
+
+    justify-content:center;
+
+}
+
+
+
+/*==============================
+ LOGIN CARD
+==============================*/
+
+.login-card{
+
+    width:100%;
+
+    max-width:470px;
+
+    background:
+
+        rgba(245,240,233,.97);
+
+    color:var(--text-dark);
+
+    border-radius:22px;
+
+    padding:42px;
+
+    backdrop-filter:blur(18px);
+
+    border:
+
+        2px solid rgb(0, 0, 0);
+
+    box-shadow:var(--shadow);
+
+}
+
+
+
+/*==============================
+ CARD HEADER
+==============================*/
+
+.card-header{
+
+    margin-bottom:34px;
+
+}
+
+.card-header h2{
+
+    font-size:2rem;
+
+    margin-bottom:8px;
+
+    color:var(--primary);
+
+}
+
+.card-header p{
+
+    color:var(--secondary);
+
+    line-height:1.7;
+
+}
+
+
+
+/*==============================
+ FORM
+==============================*/
+
+form{
+
+    display:flex;
+
+    flex-direction:column;
+
+}
+
+
+
+/*==============================
+ FIELD
+==============================*/
+
+.field{
+
+    position:relative;
+
+    margin-bottom:24px;
+
+}
+
+
+
+.field input,
+
+.field select{
+
+    width:100%;
+
+    border:2px solid #d8d8d8;
+
+    border-radius:16px;
+
+    background:#fff;
+
+    padding:
+
+        18px
+        18px
+        12px;
+
+    font-size:1rem;
+
+    outline:none;
+
+    transition:var(--transition);
+
+}
+
+
+
+/* Floating label */
+
+.field label{
+
+    position:absolute;
+
+    left:16px;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+    background:#fff;
+
+    padding:0 6px;
+
+    color:#6d6d6d;
+
+    transition:var(--transition);
+
+    pointer-events:none;
+
+}
+
+
+
+.field input:focus,
+
+.field select:focus{
+
+    border-color:var(--accent);
+
+    box-shadow:
+
+        0 0 0 5px rgba(224,197,143,.18);
+
+}
+
+
+
+.field input:focus+label,
+
+.field input:not(:placeholder-shown)+label{
+
+    top:0;
+
+    transform:translateY(-50%);
+
+    color:var(--accent);
+
+    font-size:.82rem;
+
+}
+
+
+
+/*==============================
+ OPTIONS
+==============================*/
+
+.options{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:30px;
+
+}
+
+
+
+.remember{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    cursor:pointer;
+
+    font-size:.92rem;
+
+}
+
+
+
+.remember input{
+
+    width:18px;
+
+    height:18px;
+
+    accent-color:var(--accent);
+
+}
+
+
+
+.options a{
+
+    text-decoration:none;
+
+    color:var(--accent);
+
+    font-weight:600;
+
+    transition:var(--transition);
+
+}
+
+
+
+.options a:hover{
+
+    opacity:.75;
+
+}
+
+
+
+/*==============================
+ BUTTON
+==============================*/
+
+button{
+
+    border:none;
+
+    cursor:pointer;
+
+    border-radius:16px;
+
+    padding:18px;
+
+    background:var(--accent);
+
+    color:var(--primary);
+
+    border: 1px solid black;
+
+    font-size:1rem;
+
+    font-weight:700;
+
+    transition:var(--transition);
+
+}
+
+
+
+button:hover{
+
+    transform:translateY(-3px);
+
+    box-shadow:
+
+        0 18px 30px rgba(0,0,0,.18);
+
+}
+
+
+
+button:active{
+
+    transform:translateY(0);
+
+}
+
+
+
+/*==============================
+ FOOTER
+==============================*/
+
+footer{
+
+    text-align:center;
+
+    color:rgba(255,255,255,.7);
+
+    padding:24px;
+
+    font-size:.9rem;
+
+}
+
+
+
+/*==============================
+ RESPONSIVE
+==============================*/
+
+@media (max-width:900px){
+
+    .brand h1{
+
+        font-size:3.6rem;
+
+    }
+
+}
+
+
+
+@media (max-width:768px){
+
+    body{
+
+        overflow:auto;
+
+    }
+
+    .brand{
+
+        flex-direction:column;
+
+        gap:14px;
+
+    }
+
+    .brand h1{
+
+        font-size:2.8rem;
+
+        text-align:center;
+
+    }
+
+    .login-card{
+
+        padding:32px;
+
+    }
+
+}
+
+
+
+@media (max-width:500px){
+
+    .brand h1{
+
+        font-size:2.2rem;
+
+    }
+
+    .login-card{
+
+        padding:24px;
+
+    }
+
+    .options{
+
+        flex-direction:column;
+
+        align-items:flex-start;
+
+        gap:14px;
+
+    }
+
+    .options a{
+
+        align-self:flex-end;
+
+    }
+
+}
+
+/*=========================================================
+    PART 2A
+    PREMIUM PAGE LOAD ANIMATIONS
+=========================================================*/
+
+
+/*========================================
+    TIMELINE
+
+    0.0s   Background starts moving
+    0.2s   Hero title slides in
+    1.6s   Hero moves upward
+    1.9s   Logo appears
+    2.0s   Login card fades in
+========================================*/
+
+
+/*========================================
+    BACKGROUND MOTION
+========================================*/
+
+.blob-1{
+
+    animation:
+
+        blobFloatOne 18s ease-in-out infinite alternate;
+
+}
+
+.blob-2{
+
+    animation:
+
+        blobFloatTwo 22s ease-in-out infinite alternate;
+
+}
+
+
+
+@keyframes blobFloatOne{
+
+    0%{
+
+        transform:
+            translate(0,0)
+            scale(1);
+
+    }
+
+    50%{
+
+        transform:
+            translate(40px,-25px)
+            scale(1.08);
+
+    }
+
+    100%{
+
+        transform:
+            translate(-25px,35px)
+            scale(.95);
+
+    }
+
+}
+
+
+
+@keyframes blobFloatTwo{
+
+    0%{
+
+        transform:
+            translate(0,0)
+            scale(1);
+
+    }
+
+    50%{
+
+        transform:
+            translate(-45px,20px)
+            scale(1.06);
+
+    }
+
+    100%{
+
+        transform:
+            translate(30px,-30px)
+            scale(.92);
+
+    }
+
+}
+
+
+
+/*========================================
+    HERO TITLE
+========================================*/
+
+.brand{
+
+    animation:
+
+        heroMove
+        1.2s
+        cubic-bezier(.2,.8,.2,1)
+        1.6s
+        forwards;
+
+}
+
+
+
+.brand h1{
+
+    opacity:0;
+
+    transform:
+
+        translateX(-180px);
+
+    animation:
+
+        heroIntro
+        1.2s
+        cubic-bezier(.22,.61,.36,1)
+        forwards;
+
+}
+
+
+
+/* Slide In */
+
+@keyframes heroIntro{
+
+    from{
+
+        opacity:0;
+
+        transform:
+
+            translateX(-180px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:
+
+            translateX(0);
+
+    }
+
+}
+
+
+
+/*========================================
+    HEADER TRANSFORMATION
+========================================*/
+
+@keyframes heroMove{
+
+    0%{
+
+        transform:
+
+            translateY(0)
+            scale(1);
+
+    }
+
+    100%{
+
+        transform:
+
+            translateY(-43vh)
+            scale(.42);
+
+    }
+
+}
+
+
+
+/*========================================
+    LOGO REVEAL
+========================================*/
+
+.logo{
+
+    animation:
+
+        logoReveal
+        .8s
+        ease-out
+        1.95s
+        forwards;
+
+}
+
+
+
+@keyframes logoReveal{
+
+    from{
+
+        opacity:0;
+
+        transform:
+
+            scale(.5)
+            rotate(-25deg);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:
+
+            scale(1)
+            rotate(0);
+
+    }
+
+}
+
+
+
+/*========================================
+    LOGIN CARD
+========================================*/
+
+.login-card{
+    position: relative;
+    opacity:0;
+
+    transform:
+
+        translateY(40px)
+        scale(.94);
+
+    animation:
+
+        cardReveal
+        .9s
+        cubic-bezier(.2,.8,.2,1)
+        2s
+        forwards,
+
+        cardFloat
+        8s
+        ease-in-out
+        3s
+        infinite;
+
+}
+
+
+
+@keyframes cardReveal{
+
+    from{
+
+        opacity:0;
+
+        transform:
+
+            translateY(40px)
+            scale(.94);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:
+
+            translateY(0)
+            scale(1);
+
+    }
+
+}
+
+
+
+/*========================================
+    SUBTLE CARD FLOAT
+========================================*/
+
+@keyframes cardFloat{
+
+    0%{
+
+        transform:
+
+            translateY(0);
+
+    }
+
+    50%{
+
+        transform:
+
+            translateY(-4px);
+
+    }
+
+    100%{
+
+        transform:
+
+            translateY(0);
+
+    }
+
+}
+
+
+
+/*========================================
+    CARD GLOW
+========================================*/
+
+.login-card::before{
+
+    content:"";
+
+    position:absolute;
+
+    inset:0;
+
+    border-radius:inherit;
+
+    pointer-events:none;
+
+    background:
+
+        linear-gradient(
+
+            135deg,
+
+            rgba(255,255,255,.35),
+
+            transparent 45%,
+
+            transparent 65%,
+
+            rgba(255,255,255,.18)
+
+        );
+
+    opacity:.45;
+
+}
+
+
+
+/*========================================
+    SOFT SHADOW PULSE
+========================================*/
+
+.login-card{
+
+    animation:
+
+        cardReveal .9s cubic-bezier(.2,.8,.2,1) 2s forwards,
+
+        cardFloat 8s ease-in-out 3s infinite,
+
+        shadowPulse 6s ease-in-out infinite;
+
+}
+
+
+
+@keyframes shadowPulse{
+
+    0%{
+
+        box-shadow:
+
+            0 25px 60px rgba(0,0,0,.18);
+
+    }
+
+    50%{
+
+        box-shadow:
+
+            0 32px 75px rgba(0,0,0,.23);
+
+    }
+
+    100%{
+
+        box-shadow:
+
+            0 25px 60px rgba(0,0,0,.18);
+
+    }
+
+}
+
+/*=========================================================
+    PART 2B
+    MICRO INTERACTIONS
+    STAGGERED ANIMATIONS
+=========================================================*/
+
+
+/*========================================
+    STAGGERED FORM REVEAL
+========================================*/
+
+.card-header,
+.field,
+.options,
+button{
+
+    opacity:0;
+
+    transform:translateY(20px);
+
+    animation:
+
+        fadeUp .7s ease forwards;
+
+}
+
+.card-header{
+
+    animation-delay:2.15s;
+
+}
+
+.field:nth-of-type(1){
+
+    animation-delay:2.30s;
+
+}
+
+.field:nth-of-type(2){
+
+    animation-delay:2.45s;
+
+}
+
+.field:nth-of-type(3){
+
+    animation-delay:2.60s;
+
+}
+
+.options{
+
+    animation-delay:2.80s;
+
+}
+
+button{
+
+    animation-delay:3s;
+
+}
+
+
+@keyframes fadeUp{
+
+    from{
+
+        opacity:0;
+
+        transform:
+
+            translateY(20px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:
+
+            translateY(0);
+
+    }
+
+}
+
+
+
+/*========================================
+    BUTTON SHINE
+========================================*/
+
+button{
+
+    position:relative;
+
+    overflow:hidden;
+
+}
+
+button::before{
+
+    content:"";
+
+    position:absolute;
+
+    left:-130%;
+
+    top:0;
+
+    width:60%;
+
+    height:100%;
+
+    background:
+
+        linear-gradient(
+
+            90deg,
+
+            transparent,
+
+            rgba(255,255,255,.55),
+
+            transparent
+
+        );
+
+    transform:skewX(-25deg);
+
+    transition:left .8s ease;
+
+}
+
+button:hover::before{
+
+    left:170%;
+
+}
+
+
+
+/*========================================
+    BUTTON HOVER
+========================================*/
+
+button:hover{
+
+    transform:
+
+        translateY(-4px);
+
+}
+
+button:active{
+
+    transform:
+
+        translateY(1px)
+
+        scale(.99);
+
+}
+
+button:focus-visible{
+
+    outline:none;
+
+    box-shadow:
+
+        0 0 0 5px rgba(224,197,143,.35);
+
+}
+
+
+
+/*========================================
+    INPUT HOVER
+========================================*/
+
+.field input:hover,
+.field select:hover{
+
+    transform:
+
+        translateY(-2px);
+
+}
+
+
+
+/*========================================
+    INPUT TRANSITIONS
+========================================*/
+
+.field input,
+.field select{
+
+    transition:
+
+        border-color .3s,
+
+        box-shadow .3s,
+
+        transform .25s,
+
+        background .25s;
+
+}
+
+
+
+/*========================================
+    PLACEHOLDER
+========================================*/
+
+.field input::placeholder{
+
+    color:transparent;
+
+}
+
+
+
+/*========================================
+    SELECT
+========================================*/
+
+.field select{
+
+    cursor:pointer;
+
+}
+
+
+
+/*========================================
+    REMEMBER CHECKBOX
+========================================*/
+
+.remember{
+
+    transition:.3s;
+
+}
+
+.remember:hover{
+
+    color:var(--secondary);
+
+}
+
+
+
+/*========================================
+    FORGOT PASSWORD
+========================================*/
+
+.options a{
+
+    position:relative;
+
+}
+
+.options a::after{
+
+    content:"";
+
+    position:absolute;
+
+    left:0;
+
+    bottom:-4px;
+
+    width:0;
+
+    height:2px;
+
+    background:var(--accent);
+
+    transition:.35s ease;
+
+}
+
+.options a:hover::after{
+
+    width:100%;
+
+}
+
+
+
+/*========================================
+    LOGO PULSE
+========================================*/
+
+.logo{
+
+    animation:
+
+        logoReveal .8s ease 1.95s forwards,
+
+        logoPulse 5s ease-in-out infinite 3s;
+
+}
+
+@keyframes logoPulse{
+
+    0%{
+
+        transform:
+
+            scale(1);
+
+    }
+
+    50%{
+
+        transform:
+
+            scale(1.05);
+
+    }
+
+    100%{
+
+        transform:
+
+            scale(1);
+
+    }
+
+}
+
+
+
+/*========================================
+    CARD HOVER
+========================================*/
+
+.login-card:hover{
+
+    transform:
+
+        translateY(-6px);
+
+}
+
+
+
+/*========================================
+    GRID PARALLAX FEEL
+========================================*/
+
+.grid{
+
+    animation:
+
+        gridMove 30s linear infinite;
+
+}
+
+@keyframes gridMove{
+
+    from{
+
+        background-position:
+
+            0 0,
+
+            0 0;
+
+    }
+
+    to{
+
+        background-position:
+
+            50px 50px,
+
+            50px 50px;
+
+    }
+
+}
+
+
+
+/*========================================
+    FOOTER
+========================================*/
+
+footer{
+
+    animation:
+
+        footerFade 1s ease 3.2s forwards;
+
+    opacity:0;
+
+}
+
+@keyframes footerFade{
+
+    to{
+
+        opacity:1;
+
+    }
+
+}
+
+
+
+/*========================================
+    ACCESSIBILITY
+========================================*/
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible{
+
+    outline:none;
+
+}
+
+
+
+/*========================================
+    REDUCED MOTION
+========================================*/
+
+@media (prefers-reduced-motion: reduce){
+
+    *,
+    *::before,
+    *::after{
+
+        animation:none !important;
+
+        transition:none !important;
+
+    }
+
+}
+
+
+
+/*========================================
+    TABLET
+========================================*/
+
+@media (max-width:768px){
+
+    @keyframes heroMove{
+
+        to{
+
+            transform:
+
+                translateY(-40vh)
+
+                scale(.55);
+
+        }
+
+    }
+
+}
+
+
+
+/*========================================
+    MOBILE
+========================================*/
+
+@media (max-width:480px){
+
+    @keyframes heroMove{
+
+        to{
+
+            transform:
+
+                translateY(-39vh)
+
+                scale(.68);
+
+        }
+
+    }
+
+    .brand{
+
+        gap:12px;
+
+    }
+
+    .logo{
+
+        width:48px;
+
+        height:48px;
+
+    }
+
+}
+
+
+
+/*========================================
+    END OF FILE
+=========================================================*/
