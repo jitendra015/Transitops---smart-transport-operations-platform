@@ -1,0 +1,17 @@
+{
+  "name": "transitops",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Smart transport operations platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test:database": "node scripts/verify-database.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^12.4.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
