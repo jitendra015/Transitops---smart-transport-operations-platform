@@ -6,7 +6,7 @@
 # DB_PORT=5432
 
 # Render PostgreSQL (auto-set by Render, or paste your Internal Database URL here)
-DATABASE_URL=
+DATABASE_URL=postgresql://transitops_dbd_user:sLDSNOBW6zIv9AOiloZxYchwvFwPuU5r@dpg-d99ncirtqb8s73arhjsg-a/transitops_dbd
 
 # Session Secret (generate a random string for production)
 SESSION_SECRET=transitops-hackathon-secret-2024
