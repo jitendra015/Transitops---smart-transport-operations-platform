@@ -30,7 +30,7 @@ router.get('/:id', (req, res) => {
   res.json(trip);
 });
 
-// CREATE a trip (status = Draft). Validates capacity + availability up front.
+
 router.post('/', (req, res) => {
   const { source, destination, vehicle_id, driver_id, cargo_weight, planned_distance } = req.body;
 
@@ -44,12 +44,12 @@ router.post('/', (req, res) => {
   if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
   if (!driver) return res.status(404).json({ error: 'Driver not found' });
 
-  // Rule: Retired or In Shop vehicles must never appear in dispatch selection
+
   if (vehicle.status !== 'Available') {
     return res.status(422).json({ error: `Vehicle ${vehicle.reg_number} is not Available (current status: ${vehicle.status})` });
   }
 
-  // Rule: Drivers with expired licenses or Suspended status cannot be assigned
+  
   if (driver.status === 'Suspended') {
     return res.status(422).json({ error: `Driver ${driver.name} is suspended and cannot be assigned to trips` });
   }
@@ -60,7 +60,7 @@ router.post('/', (req, res) => {
     return res.status(422).json({ error: `Driver ${driver.name}'s license expired on ${driver.license_expiry}` });
   }
 
-  // Rule: Cargo weight must not exceed vehicle's max load capacity
+
   if (cargo_weight > vehicle.max_load_capacity) {
     return res.status(422).json({
       error: `Cargo weight (${cargo_weight}kg) exceeds vehicle max capacity (${vehicle.max_load_capacity}kg)`
@@ -75,7 +75,7 @@ router.post('/', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM trips WHERE id = ?').get(result.lastInsertRowid));
 });
 
-// DISPATCH a trip: Draft -> Dispatched. Vehicle & Driver -> On Trip.
+
 router.post('/:id/dispatch', (req, res) => {
   const trip = db.prepare('SELECT * FROM trips WHERE id = ?').get(req.params.id);
   if (!trip) return res.status(404).json({ error: 'Trip not found' });
@@ -86,7 +86,7 @@ router.post('/:id/dispatch', (req, res) => {
   const vehicle = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(trip.vehicle_id);
   const driver = db.prepare('SELECT * FROM drivers WHERE id = ?').get(trip.driver_id);
 
-  // Re-validate at dispatch time in case state changed since trip was drafted
+
   if (vehicle.status !== 'Available') {
     return res.status(422).json({ error: `Vehicle is no longer Available (status: ${vehicle.status})` });
   }
@@ -107,7 +107,7 @@ router.post('/:id/dispatch', (req, res) => {
   res.json(db.prepare('SELECT * FROM trips WHERE id = ?').get(trip.id));
 });
 
-// COMPLETE a trip: Dispatched -> Completed. Vehicle & Driver -> Available.
+
 router.post('/:id/complete', (req, res) => {
   const trip = db.prepare('SELECT * FROM trips WHERE id = ?').get(req.params.id);
   if (!trip) return res.status(404).json({ error: 'Trip not found' });
@@ -138,7 +138,7 @@ router.post('/:id/complete', (req, res) => {
   res.json(db.prepare('SELECT * FROM trips WHERE id = ?').get(trip.id));
 });
 
-// CANCEL a trip: Draft or Dispatched -> Cancelled. If it was Dispatched, restore Vehicle/Driver.
+
 router.post('/:id/cancel', (req, res) => {
   const trip = db.prepare('SELECT * FROM trips WHERE id = ?').get(req.params.id);
   if (!trip) return res.status(404).json({ error: 'Trip not found' });
