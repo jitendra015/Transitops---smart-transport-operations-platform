@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 const VALID_STATUSES = ['Available', 'On Trip', 'Off Duty', 'Suspended'];
 
-// GET /api/drivers?status=&dispatchable=true
+
 router.get('/', (req, res) => {
   const { status, dispatchable } = req.query;
   let sql = 'SELECT * FROM drivers WHERE 1=1';
@@ -15,7 +15,8 @@ router.get('/', (req, res) => {
 
   if (status) { sql += ' AND status = ?'; params.push(status); }
   if (dispatchable === 'true') {
-    // Suspended or expired-license drivers must never appear in the dispatch selection
+
+    
     sql += " AND status = 'Available' AND date(license_expiry) >= date('now')";
   }
   sql += ' ORDER BY id DESC';
