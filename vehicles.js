@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 const VALID_STATUSES = ['Available', 'On Trip', 'In Shop', 'Retired'];
 
-// GET /api/vehicles?status=&type=&region=&dispatchable=true
+
 router.get('/', (req, res) => {
   const { status, type, region, dispatchable } = req.query;
   let sql = 'SELECT * FROM vehicles WHERE 1=1';
@@ -17,7 +17,7 @@ router.get('/', (req, res) => {
   if (type) { sql += ' AND type = ?'; params.push(type); }
   if (region) { sql += ' AND region = ?'; params.push(region); }
   if (dispatchable === 'true') {
-    // Retired or In Shop vehicles must never appear in the dispatch selection
+  
     sql += " AND status = 'Available'";
   }
   sql += ' ORDER BY id DESC';
