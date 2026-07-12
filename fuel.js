@@ -5,7 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireAuth);
 
-// ---- Fuel logs ----
+
 router.get('/fuel', (req, res) => {
   const { vehicle_id } = req.query;
   let sql = `SELECT f.*, v.reg_number FROM fuel_logs f JOIN vehicles v ON v.id = f.vehicle_id WHERE 1=1`;
@@ -29,7 +29,7 @@ router.post('/fuel', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM fuel_logs WHERE id = ?').get(result.lastInsertRowid));
 });
 
-// ---- Expenses (tolls, misc) ----
+
 router.get('/expenses', (req, res) => {
   const { vehicle_id } = req.query;
   let sql = `SELECT e.*, v.reg_number FROM expenses e JOIN vehicles v ON v.id = e.vehicle_id WHERE 1=1`;
