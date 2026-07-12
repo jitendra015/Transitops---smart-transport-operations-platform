@@ -16,7 +16,7 @@ router.get('/', (req, res) => {
   res.json(db.prepare(sql).all(...params));
 });
 
-// Creating an active maintenance record automatically changes vehicle status to In Shop
+
 router.post('/', (req, res) => {
   const { vehicle_id, description, cost } = req.body;
   if (!vehicle_id || !description) {
@@ -39,7 +39,7 @@ router.post('/', (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM maintenance_logs WHERE id = ?').get(id));
 });
 
-// Closing maintenance restores the vehicle to Available (unless retired)
+
 router.post('/:id/close', (req, res) => {
   const record = db.prepare('SELECT * FROM maintenance_logs WHERE id = ?').get(req.params.id);
   if (!record) return res.status(404).json({ error: 'Maintenance record not found' });
@@ -51,7 +51,7 @@ router.post('/:id/close', (req, res) => {
 
   const tx = db.transaction(() => {
     db.prepare("UPDATE maintenance_logs SET status = 'Closed', closed_at = datetime('now') WHERE id = ?").run(record.id);
-    // Only restore to Available if there are no other active maintenance records and vehicle isn't retired
+
     const otherActive = db.prepare(
       "SELECT COUNT(*) AS c FROM maintenance_logs WHERE vehicle_id = ? AND status = 'Active' AND id != ?"
     ).get(record.vehicle_id, record.id).c;
