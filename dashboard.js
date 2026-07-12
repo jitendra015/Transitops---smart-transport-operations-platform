@@ -30,7 +30,7 @@ router.get('/kpis', (req, res) => {
   });
 });
 
-// Per-vehicle report: fuel efficiency, operational cost
+
 router.get('/reports', (req, res) => {
   const vehicles = db.prepare('SELECT * FROM vehicles').all();
 
@@ -58,7 +58,7 @@ router.get('/reports', (req, res) => {
   res.json(report);
 });
 
-// Simple CSV export of the reports data
+
 router.get('/reports.csv', (req, res) => {
   const vehicles = db.prepare('SELECT * FROM vehicles').all();
   const rows = [['reg_number', 'name', 'total_distance', 'total_fuel_liters', 'fuel_efficiency_km_per_l', 'fuel_cost', 'maintenance_cost', 'operational_cost']];
