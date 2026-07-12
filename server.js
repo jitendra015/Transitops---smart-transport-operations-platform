@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
@@ -14,22 +14,30 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-    secret: 'transitops-hackathon-secret-2024',
+    secret: process.env.SESSION_SECRET || 'transitops-hackathon-secret-2024',
     resave: false,
     saveUninitialized: false,
     cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-// Database connection pool
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'transitops',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+// Database connection pool (works with both local MySQL and Render PostgreSQL)
+let pool;
+if (process.env.DATABASE_URL) {
+    // Render PostgreSQL
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
+} else {
+    // Local fallback
+    pool = new Pool({
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'transitops',
+        port: process.env.DB_PORT || 5432,
+    });
+}
 
 // Auth middleware
 const requireAuth = (req, res, next) => {
@@ -39,33 +47,22 @@ const requireAuth = (req, res, next) => {
     next();
 };
 
-const requireRole = (roles) => {
-    return (req, res, next) => {
-        if (!req.session.userId || !roles.includes(req.session.role)) {
-            return res.status(403).json({ error: 'Forbidden' });
-        }
-        next();
-    };
-};
-
 // ==================== AUTH ROUTES ====================
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
-        const [rows] = await pool.execute('SELECT * FROM users WHERE email = ?', [email]);
+        const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
 
         const user = rows[0];
         let valid = false;
 
-        // Try bcrypt first
         try {
             valid = await bcrypt.compare(password, user.password);
         } catch (e) {
             valid = false;
         }
 
-        // Fallback for demo accounts
         if (!valid && password === 'password123') {
             valid = true;
         }
@@ -83,20 +80,6 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-app.post('/api/auth/register', async (req, res) => {
-    const { email, password, name, role } = req.body;
-    try {
-        const hash = await bcrypt.hash(password, 10);
-        const [result] = await pool.execute(
-            'INSERT INTO users (email, password, name, role) VALUES (?, ?, ?, ?)',
-            [email, hash, name, role || 'FleetManager']
-        );
-        res.json({ id: result.insertId, email, name, role });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 app.get('/api/auth/me', requireAuth, (req, res) => {
     res.json({ id: req.session.userId, role: req.session.role, name: req.session.name, email: req.session.email });
 });
@@ -109,27 +92,27 @@ app.post('/api/auth/logout', (req, res) => {
 // ==================== DASHBOARD KPIs ====================
 app.get('/api/dashboard/kpis', requireAuth, async (req, res) => {
     try {
-        const [[activeVehicles]] = await pool.execute("SELECT COUNT(*) as count FROM vehicles WHERE status = 'On Trip'");
-        const [[availableVehicles]] = await pool.execute("SELECT COUNT(*) as count FROM vehicles WHERE status = 'Available'");
-        const [[inMaintenance]] = await pool.execute("SELECT COUNT(*) as count FROM vehicles WHERE status = 'In Shop'");
-        const [[activeTrips]] = await pool.execute("SELECT COUNT(*) as count FROM trips WHERE status = 'Dispatched'");
-        const [[pendingTrips]] = await pool.execute("SELECT COUNT(*) as count FROM trips WHERE status = 'Draft'");
-        const [[driversOnDuty]] = await pool.execute("SELECT COUNT(*) as count FROM drivers WHERE status = 'On Trip'");
-        const [[totalVehicles]] = await pool.execute("SELECT COUNT(*) as count FROM vehicles WHERE status != 'Retired'");
-        const [[totalDrivers]] = await pool.execute("SELECT COUNT(*) as count FROM drivers");
+        const { rows: activeVehicles } = await pool.query("SELECT COUNT(*) as count FROM vehicles WHERE status = 'On Trip'");
+        const { rows: availableVehicles } = await pool.query("SELECT COUNT(*) as count FROM vehicles WHERE status = 'Available'");
+        const { rows: inMaintenance } = await pool.query("SELECT COUNT(*) as count FROM vehicles WHERE status = 'In Shop'");
+        const { rows: activeTrips } = await pool.query("SELECT COUNT(*) as count FROM trips WHERE status = 'Dispatched'");
+        const { rows: pendingTrips } = await pool.query("SELECT COUNT(*) as count FROM trips WHERE status = 'Draft'");
+        const { rows: driversOnDuty } = await pool.query("SELECT COUNT(*) as count FROM drivers WHERE status = 'On Trip'");
+        const { rows: totalVehicles } = await pool.query("SELECT COUNT(*) as count FROM vehicles WHERE status != 'Retired'");
+        const { rows: totalDrivers } = await pool.query("SELECT COUNT(*) as count FROM drivers");
 
-        const fleetUtilization = totalVehicles.count > 0 
-            ? Math.round((activeVehicles.count / totalVehicles.count) * 100) 
+        const fleetUtilization = totalVehicles[0].count > 0 
+            ? Math.round((activeVehicles[0].count / totalVehicles[0].count) * 100) 
             : 0;
 
         res.json({
-            activeVehicles: activeVehicles.count,
-            availableVehicles: availableVehicles.count,
-            inMaintenance: inMaintenance.count,
-            activeTrips: activeTrips.count,
-            pendingTrips: pendingTrips.count,
-            driversOnDuty: driversOnDuty.count,
-            totalDrivers: totalDrivers.count,
+            activeVehicles: parseInt(activeVehicles[0].count),
+            availableVehicles: parseInt(availableVehicles[0].count),
+            inMaintenance: parseInt(inMaintenance[0].count),
+            activeTrips: parseInt(activeTrips[0].count),
+            pendingTrips: parseInt(pendingTrips[0].count),
+            driversOnDuty: parseInt(driversOnDuty[0].count),
+            totalDrivers: parseInt(totalDrivers[0].count),
             fleetUtilization
         });
     } catch (err) {
@@ -140,7 +123,7 @@ app.get('/api/dashboard/kpis', requireAuth, async (req, res) => {
 // ==================== VEHICLES ====================
 app.get('/api/vehicles', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute('SELECT * FROM vehicles ORDER BY created_at DESC');
+        const { rows } = await pool.query('SELECT * FROM vehicles ORDER BY created_at DESC');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -150,14 +133,14 @@ app.get('/api/vehicles', requireAuth, async (req, res) => {
 app.post('/api/vehicles', requireAuth, async (req, res) => {
     const { reg_number, name, type, max_load_capacity, odometer, acquisition_cost } = req.body;
     try {
-        const [existing] = await pool.execute('SELECT id FROM vehicles WHERE reg_number = ?', [reg_number]);
+        const { rows: existing } = await pool.query('SELECT id FROM vehicles WHERE reg_number = $1', [reg_number]);
         if (existing.length > 0) return res.status(400).json({ error: 'Registration number must be unique' });
 
-        const [result] = await pool.execute(
-            'INSERT INTO vehicles (reg_number, name, type, max_load_capacity, odometer, acquisition_cost, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        const { rows } = await pool.query(
+            'INSERT INTO vehicles (reg_number, name, type, max_load_capacity, odometer, acquisition_cost, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
             [reg_number, name, type, max_load_capacity, odometer || 0, acquisition_cost, 'Available']
         );
-        res.json({ id: result.insertId, ...req.body, status: 'Available' });
+        res.json(rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -166,11 +149,8 @@ app.post('/api/vehicles', requireAuth, async (req, res) => {
 app.put('/api/vehicles/:id', requireAuth, async (req, res) => {
     const { reg_number, name, type, max_load_capacity, odometer, acquisition_cost, status } = req.body;
     try {
-        const [existing] = await pool.execute('SELECT id FROM vehicles WHERE reg_number = ? AND id != ?', [reg_number, req.params.id]);
-        if (existing.length > 0) return res.status(400).json({ error: 'Registration number must be unique' });
-
-        await pool.execute(
-            'UPDATE vehicles SET reg_number=?, name=?, type=?, max_load_capacity=?, odometer=?, acquisition_cost=?, status=? WHERE id=?',
+        await pool.query(
+            'UPDATE vehicles SET reg_number=$1, name=$2, type=$3, max_load_capacity=$4, odometer=$5, acquisition_cost=$6, status=$7 WHERE id=$8',
             [reg_number, name, type, max_load_capacity, odometer, acquisition_cost, status, req.params.id]
         );
         res.json({ message: 'Updated' });
@@ -181,7 +161,7 @@ app.put('/api/vehicles/:id', requireAuth, async (req, res) => {
 
 app.delete('/api/vehicles/:id', requireAuth, async (req, res) => {
     try {
-        await pool.execute('UPDATE vehicles SET status = ? WHERE id = ?', ['Retired', req.params.id]);
+        await pool.query('UPDATE vehicles SET status = $1 WHERE id = $2', ['Retired', req.params.id]);
         res.json({ message: 'Vehicle retired' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -191,7 +171,7 @@ app.delete('/api/vehicles/:id', requireAuth, async (req, res) => {
 // ==================== DRIVERS ====================
 app.get('/api/drivers', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute('SELECT * FROM drivers ORDER BY created_at DESC');
+        const { rows } = await pool.query('SELECT * FROM drivers ORDER BY created_at DESC');
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -201,14 +181,14 @@ app.get('/api/drivers', requireAuth, async (req, res) => {
 app.post('/api/drivers', requireAuth, async (req, res) => {
     const { name, license_number, license_category, license_expiry, contact, safety_score } = req.body;
     try {
-        const [existing] = await pool.execute('SELECT id FROM drivers WHERE license_number = ?', [license_number]);
+        const { rows: existing } = await pool.query('SELECT id FROM drivers WHERE license_number = $1', [license_number]);
         if (existing.length > 0) return res.status(400).json({ error: 'License number must be unique' });
 
-        const [result] = await pool.execute(
-            'INSERT INTO drivers (name, license_number, license_category, license_expiry, contact, safety_score, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        const { rows } = await pool.query(
+            'INSERT INTO drivers (name, license_number, license_category, license_expiry, contact, safety_score, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
             [name, license_number, license_category, license_expiry, contact, safety_score || 5.0, 'Available']
         );
-        res.json({ id: result.insertId, ...req.body, status: 'Available' });
+        res.json(rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -217,11 +197,8 @@ app.post('/api/drivers', requireAuth, async (req, res) => {
 app.put('/api/drivers/:id', requireAuth, async (req, res) => {
     const { name, license_number, license_category, license_expiry, contact, safety_score, status } = req.body;
     try {
-        const [existing] = await pool.execute('SELECT id FROM drivers WHERE license_number = ? AND id != ?', [license_number, req.params.id]);
-        if (existing.length > 0) return res.status(400).json({ error: 'License number must be unique' });
-
-        await pool.execute(
-            'UPDATE drivers SET name=?, license_number=?, license_category=?, license_expiry=?, contact=?, safety_score=?, status=? WHERE id=?',
+        await pool.query(
+            'UPDATE drivers SET name=$1, license_number=$2, license_category=$3, license_expiry=$4, contact=$5, safety_score=$6, status=$7 WHERE id=$8',
             [name, license_number, license_category, license_expiry, contact, safety_score, status, req.params.id]
         );
         res.json({ message: 'Updated' });
@@ -232,7 +209,7 @@ app.put('/api/drivers/:id', requireAuth, async (req, res) => {
 
 app.delete('/api/drivers/:id', requireAuth, async (req, res) => {
     try {
-        await pool.execute('UPDATE drivers SET status = ? WHERE id = ?', ['Suspended', req.params.id]);
+        await pool.query('UPDATE drivers SET status = $1 WHERE id = $2', ['Suspended', req.params.id]);
         res.json({ message: 'Driver suspended' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -242,7 +219,7 @@ app.delete('/api/drivers/:id', requireAuth, async (req, res) => {
 // ==================== TRIPS ====================
 app.get('/api/trips', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute(`
+        const { rows } = await pool.query(`
             SELECT t.*, v.reg_number as vehicle_reg, v.name as vehicle_name, v.max_load_capacity,
                    d.name as driver_name, d.license_number, d.license_expiry, d.status as driver_status
             FROM trips t
@@ -258,135 +235,131 @@ app.get('/api/trips', requireAuth, async (req, res) => {
 
 app.post('/api/trips', requireAuth, async (req, res) => {
     const { source, destination, vehicle_id, driver_id, cargo_weight, planned_distance } = req.body;
-    const conn = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await conn.beginTransaction();
+        await client.query('BEGIN');
 
-        // Validate vehicle
-        const [vehicles] = await conn.execute('SELECT * FROM vehicles WHERE id = ?', [vehicle_id]);
+        const { rows: vehicles } = await client.query('SELECT * FROM vehicles WHERE id = $1', [vehicle_id]);
         if (vehicles.length === 0) throw new Error('Vehicle not found');
         const vehicle = vehicles[0];
         if (vehicle.status === 'In Shop') throw new Error('Vehicle is in maintenance');
         if (vehicle.status === 'Retired') throw new Error('Vehicle is retired');
         if (vehicle.status === 'On Trip') throw new Error('Vehicle is already on a trip');
 
-        // Validate driver
-        const [drivers] = await conn.execute('SELECT * FROM drivers WHERE id = ?', [driver_id]);
+        const { rows: drivers } = await client.query('SELECT * FROM drivers WHERE id = $1', [driver_id]);
         if (drivers.length === 0) throw new Error('Driver not found');
         const driver = drivers[0];
         if (driver.status === 'Suspended') throw new Error('Driver is suspended');
         if (driver.status === 'On Trip') throw new Error('Driver is already on a trip');
         if (new Date(driver.license_expiry) < new Date()) throw new Error('Driver license has expired');
 
-        // Validate cargo weight
         if (parseFloat(cargo_weight) > parseFloat(vehicle.max_load_capacity)) {
             throw new Error('Cargo weight exceeds vehicle maximum load capacity');
         }
 
-        const [result] = await conn.execute(
-            'INSERT INTO trips (source, destination, vehicle_id, driver_id, cargo_weight, planned_distance, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        const { rows } = await client.query(
+            'INSERT INTO trips (source, destination, vehicle_id, driver_id, cargo_weight, planned_distance, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
             [source, destination, vehicle_id, driver_id, cargo_weight, planned_distance, 'Draft']
         );
 
-        await conn.commit();
-        res.json({ id: result.insertId, ...req.body, status: 'Draft' });
+        await client.query('COMMIT');
+        res.json(rows[0]);
     } catch (err) {
-        await conn.rollback();
+        await client.query('ROLLBACK');
         res.status(400).json({ error: err.message });
     } finally {
-        conn.release();
+        client.release();
     }
 });
 
 app.put('/api/trips/:id/dispatch', requireAuth, async (req, res) => {
-    const conn = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await conn.beginTransaction();
+        await client.query('BEGIN');
 
-        const [trips] = await conn.execute('SELECT * FROM trips WHERE id = ?', [req.params.id]);
+        const { rows: trips } = await client.query('SELECT * FROM trips WHERE id = $1', [req.params.id]);
         if (trips.length === 0) throw new Error('Trip not found');
         const trip = trips[0];
         if (trip.status !== 'Draft') throw new Error('Only Draft trips can be dispatched');
 
-        // Validate vehicle and driver again
-        const [vehicles] = await conn.execute('SELECT * FROM vehicles WHERE id = ?', [trip.vehicle_id]);
-        const [drivers] = await conn.execute('SELECT * FROM drivers WHERE id = ?', [trip.driver_id]);
+        const { rows: vehicles } = await client.query('SELECT * FROM vehicles WHERE id = $1', [trip.vehicle_id]);
+        const { rows: drivers } = await client.query('SELECT * FROM drivers WHERE id = $1', [trip.driver_id]);
 
         if (vehicles[0].status !== 'Available') throw new Error('Vehicle is not available');
         if (drivers[0].status !== 'Available') throw new Error('Driver is not available');
         if (new Date(drivers[0].license_expiry) < new Date()) throw new Error('Driver license expired');
 
-        await conn.execute("UPDATE trips SET status = 'Dispatched' WHERE id = ?", [req.params.id]);
-        await conn.execute("UPDATE vehicles SET status = 'On Trip' WHERE id = ?", [trip.vehicle_id]);
-        await conn.execute("UPDATE drivers SET status = 'On Trip' WHERE id = ?", [trip.driver_id]);
+        await client.query("UPDATE trips SET status = 'Dispatched' WHERE id = $1", [req.params.id]);
+        await client.query("UPDATE vehicles SET status = 'On Trip' WHERE id = $1", [trip.vehicle_id]);
+        await client.query("UPDATE drivers SET status = 'On Trip' WHERE id = $1", [trip.driver_id]);
 
-        await conn.commit();
+        await client.query('COMMIT');
         res.json({ message: 'Trip dispatched' });
     } catch (err) {
-        await conn.rollback();
+        await client.query('ROLLBACK');
         res.status(400).json({ error: err.message });
     } finally {
-        conn.release();
+        client.release();
     }
 });
 
 app.put('/api/trips/:id/complete', requireAuth, async (req, res) => {
     const { actual_distance, fuel_consumed } = req.body;
-    const conn = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await conn.beginTransaction();
+        await client.query('BEGIN');
 
-        const [trips] = await conn.execute('SELECT * FROM trips WHERE id = ?', [req.params.id]);
+        const { rows: trips } = await client.query('SELECT * FROM trips WHERE id = $1', [req.params.id]);
         if (trips.length === 0) throw new Error('Trip not found');
         const trip = trips[0];
         if (trip.status !== 'Dispatched') throw new Error('Only Dispatched trips can be completed');
 
-        await conn.execute(
-            "UPDATE trips SET status = 'Completed', actual_distance = ?, fuel_consumed = ?, completed_at = NOW() WHERE id = ?",
+        await client.query(
+            "UPDATE trips SET status = 'Completed', actual_distance = $1, fuel_consumed = $2, completed_at = NOW() WHERE id = $3",
             [actual_distance, fuel_consumed, req.params.id]
         );
-        await conn.execute("UPDATE vehicles SET status = 'Available' WHERE id = ?", [trip.vehicle_id]);
-        await conn.execute("UPDATE drivers SET status = 'Available' WHERE id = ?", [trip.driver_id]);
+        await client.query("UPDATE vehicles SET status = 'Available' WHERE id = $1", [trip.vehicle_id]);
+        await client.query("UPDATE drivers SET status = 'Available' WHERE id = $1", [trip.driver_id]);
 
-        await conn.commit();
+        await client.query('COMMIT');
         res.json({ message: 'Trip completed' });
     } catch (err) {
-        await conn.rollback();
+        await client.query('ROLLBACK');
         res.status(400).json({ error: err.message });
     } finally {
-        conn.release();
+        client.release();
     }
 });
 
 app.put('/api/trips/:id/cancel', requireAuth, async (req, res) => {
-    const conn = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await conn.beginTransaction();
+        await client.query('BEGIN');
 
-        const [trips] = await conn.execute('SELECT * FROM trips WHERE id = ?', [req.params.id]);
+        const { rows: trips } = await client.query('SELECT * FROM trips WHERE id = $1', [req.params.id]);
         if (trips.length === 0) throw new Error('Trip not found');
         const trip = trips[0];
         if (trip.status !== 'Dispatched' && trip.status !== 'Draft') throw new Error('Cannot cancel this trip');
 
-        await conn.execute("UPDATE trips SET status = 'Cancelled' WHERE id = ?", [req.params.id]);
+        await client.query("UPDATE trips SET status = 'Cancelled' WHERE id = $1", [req.params.id]);
         if (trip.status === 'Dispatched') {
-            await conn.execute("UPDATE vehicles SET status = 'Available' WHERE id = ?", [trip.vehicle_id]);
-            await conn.execute("UPDATE drivers SET status = 'Available' WHERE id = ?", [trip.driver_id]);
+            await client.query("UPDATE vehicles SET status = 'Available' WHERE id = $1", [trip.vehicle_id]);
+            await client.query("UPDATE drivers SET status = 'Available' WHERE id = $1", [trip.driver_id]);
         }
 
-        await conn.commit();
+        await client.query('COMMIT');
         res.json({ message: 'Trip cancelled' });
     } catch (err) {
-        await conn.rollback();
+        await client.query('ROLLBACK');
         res.status(400).json({ error: err.message });
     } finally {
-        conn.release();
+        client.release();
     }
 });
 
 app.delete('/api/trips/:id', requireAuth, async (req, res) => {
     try {
-        await pool.execute('DELETE FROM trips WHERE id = ? AND status = ?', [req.params.id, 'Draft']);
+        await pool.query('DELETE FROM trips WHERE id = $1 AND status = $2', [req.params.id, 'Draft']);
         res.json({ message: 'Trip deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -396,7 +369,7 @@ app.delete('/api/trips/:id', requireAuth, async (req, res) => {
 // ==================== MAINTENANCE ====================
 app.get('/api/maintenance', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute(`
+        const { rows } = await pool.query(`
             SELECT m.*, v.reg_number, v.name as vehicle_name 
             FROM maintenance_logs m
             JOIN vehicles v ON m.vehicle_id = v.id
@@ -410,55 +383,55 @@ app.get('/api/maintenance', requireAuth, async (req, res) => {
 
 app.post('/api/maintenance', requireAuth, async (req, res) => {
     const { vehicle_id, description, cost } = req.body;
-    const conn = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await conn.beginTransaction();
+        await client.query('BEGIN');
 
-        const [result] = await conn.execute(
-            'INSERT INTO maintenance_logs (vehicle_id, description, cost, status) VALUES (?, ?, ?, ?)',
+        const { rows } = await client.query(
+            'INSERT INTO maintenance_logs (vehicle_id, description, cost, status) VALUES ($1, $2, $3, $4) RETURNING *',
             [vehicle_id, description, cost || 0, 'Active']
         );
-        await conn.execute("UPDATE vehicles SET status = 'In Shop' WHERE id = ?", [vehicle_id]);
+        await client.query("UPDATE vehicles SET status = 'In Shop' WHERE id = $1", [vehicle_id]);
 
-        await conn.commit();
-        res.json({ id: result.insertId, ...req.body, status: 'Active' });
+        await client.query('COMMIT');
+        res.json(rows[0]);
     } catch (err) {
-        await conn.rollback();
+        await client.query('ROLLBACK');
         res.status(500).json({ error: err.message });
     } finally {
-        conn.release();
+        client.release();
     }
 });
 
 app.put('/api/maintenance/:id/close', requireAuth, async (req, res) => {
-    const conn = await pool.getConnection();
+    const client = await pool.connect();
     try {
-        await conn.beginTransaction();
+        await client.query('BEGIN');
 
-        const [logs] = await conn.execute('SELECT * FROM maintenance_logs WHERE id = ?', [req.params.id]);
+        const { rows: logs } = await client.query('SELECT * FROM maintenance_logs WHERE id = $1', [req.params.id]);
         if (logs.length === 0) throw new Error('Maintenance log not found');
 
-        await conn.execute("UPDATE maintenance_logs SET status = 'Closed', completed_at = NOW() WHERE id = ?", [req.params.id]);
+        await client.query("UPDATE maintenance_logs SET status = 'Closed', completed_at = NOW() WHERE id = $1", [req.params.id]);
 
-        const [vehicles] = await conn.execute('SELECT status FROM vehicles WHERE id = ?', [logs[0].vehicle_id]);
+        const { rows: vehicles } = await client.query('SELECT status FROM vehicles WHERE id = $1', [logs[0].vehicle_id]);
         if (vehicles[0].status !== 'Retired') {
-            await conn.execute("UPDATE vehicles SET status = 'Available' WHERE id = ?", [logs[0].vehicle_id]);
+            await client.query("UPDATE vehicles SET status = 'Available' WHERE id = $1", [logs[0].vehicle_id]);
         }
 
-        await conn.commit();
+        await client.query('COMMIT');
         res.json({ message: 'Maintenance closed' });
     } catch (err) {
-        await conn.rollback();
+        await client.query('ROLLBACK');
         res.status(400).json({ error: err.message });
     } finally {
-        conn.release();
+        client.release();
     }
 });
 
 // ==================== FUEL LOGS ====================
 app.get('/api/fuel-logs', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute(`
+        const { rows } = await pool.query(`
             SELECT f.*, v.reg_number, v.name as vehicle_name
             FROM fuel_logs f
             JOIN vehicles v ON f.vehicle_id = v.id
@@ -473,11 +446,11 @@ app.get('/api/fuel-logs', requireAuth, async (req, res) => {
 app.post('/api/fuel-logs', requireAuth, async (req, res) => {
     const { vehicle_id, trip_id, liters, cost, log_date } = req.body;
     try {
-        const [result] = await pool.execute(
-            'INSERT INTO fuel_logs (vehicle_id, trip_id, liters, cost, log_date) VALUES (?, ?, ?, ?, ?)',
+        const { rows } = await pool.query(
+            'INSERT INTO fuel_logs (vehicle_id, trip_id, liters, cost, log_date) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [vehicle_id, trip_id || null, liters, cost, log_date]
         );
-        res.json({ id: result.insertId, ...req.body });
+        res.json(rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -486,7 +459,7 @@ app.post('/api/fuel-logs', requireAuth, async (req, res) => {
 // ==================== EXPENSES ====================
 app.get('/api/expenses', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute(`
+        const { rows } = await pool.query(`
             SELECT e.*, v.reg_number, t.source, t.destination
             FROM expenses e
             JOIN vehicles v ON e.vehicle_id = v.id
@@ -502,11 +475,11 @@ app.get('/api/expenses', requireAuth, async (req, res) => {
 app.post('/api/expenses', requireAuth, async (req, res) => {
     const { trip_id, vehicle_id, type, amount, description, expense_date } = req.body;
     try {
-        const [result] = await pool.execute(
-            'INSERT INTO expenses (trip_id, vehicle_id, type, amount, description, expense_date) VALUES (?, ?, ?, ?, ?, ?)',
+        const { rows } = await pool.query(
+            'INSERT INTO expenses (trip_id, vehicle_id, type, amount, description, expense_date) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
             [trip_id || null, vehicle_id, type, amount, description, expense_date]
         );
-        res.json({ id: result.insertId, ...req.body });
+        res.json(rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -515,17 +488,17 @@ app.post('/api/expenses', requireAuth, async (req, res) => {
 // ==================== REPORTS ====================
 app.get('/api/reports/fuel-efficiency', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute(`
+        const { rows } = await pool.query(`
             SELECT v.reg_number, v.name, v.type,
                    COALESCE(SUM(t.actual_distance), 0) as total_distance,
                    COALESCE(SUM(t.fuel_consumed), 0) as total_fuel,
                    CASE WHEN COALESCE(SUM(t.fuel_consumed), 0) > 0 
-                        THEN ROUND(SUM(t.actual_distance) / SUM(t.fuel_consumed), 2) 
+                        THEN ROUND(SUM(t.actual_distance) / NULLIF(SUM(t.fuel_consumed), 0), 2) 
                         ELSE 0 END as efficiency
             FROM vehicles v
             LEFT JOIN trips t ON v.id = t.vehicle_id AND t.status = 'Completed'
             GROUP BY v.id
-            HAVING total_fuel > 0
+            HAVING COALESCE(SUM(t.fuel_consumed), 0) > 0
         `);
         res.json(rows);
     } catch (err) {
@@ -535,9 +508,9 @@ app.get('/api/reports/fuel-efficiency', requireAuth, async (req, res) => {
 
 app.get('/api/reports/operational-cost', requireAuth, async (req, res) => {
     try {
-        const [fuel] = await pool.execute('SELECT COALESCE(SUM(cost), 0) as total FROM fuel_logs');
-        const [maintenance] = await pool.execute('SELECT COALESCE(SUM(cost), 0) as total FROM maintenance_logs');
-        const [expenses] = await pool.execute('SELECT COALESCE(SUM(amount), 0) as total FROM expenses');
+        const { rows: fuel } = await pool.query('SELECT COALESCE(SUM(cost), 0) as total FROM fuel_logs');
+        const { rows: maintenance } = await pool.query('SELECT COALESCE(SUM(cost), 0) as total FROM maintenance_logs');
+        const { rows: expenses } = await pool.query('SELECT COALESCE(SUM(amount), 0) as total FROM expenses');
 
         res.json({
             fuelCost: fuel[0].total,
@@ -552,7 +525,7 @@ app.get('/api/reports/operational-cost', requireAuth, async (req, res) => {
 
 app.get('/api/reports/vehicle-roi', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute(`
+        const { rows } = await pool.query(`
             SELECT v.id, v.reg_number, v.name, v.acquisition_cost, v.revenue,
                    COALESCE(SUM(f.cost), 0) as fuel_cost,
                    COALESCE(SUM(m.cost), 0) as maintenance_cost
@@ -580,17 +553,17 @@ app.get('/api/reports/vehicle-roi', requireAuth, async (req, res) => {
 
 app.get('/api/reports/fleet-utilization', requireAuth, async (req, res) => {
     try {
-        const [total] = await pool.execute("SELECT COUNT(*) as count FROM vehicles WHERE status != 'Retired'");
-        const [active] = await pool.execute("SELECT COUNT(*) as count FROM vehicles WHERE status = 'On Trip'");
-        const [available] = await pool.execute("SELECT COUNT(*) as count FROM vehicles WHERE status = 'Available'");
-        const [maintenance] = await pool.execute("SELECT COUNT(*) as count FROM vehicles WHERE status = 'In Shop'");
+        const { rows: total } = await pool.query("SELECT COUNT(*) as count FROM vehicles WHERE status != 'Retired'");
+        const { rows: active } = await pool.query("SELECT COUNT(*) as count FROM vehicles WHERE status = 'On Trip'");
+        const { rows: available } = await pool.query("SELECT COUNT(*) as count FROM vehicles WHERE status = 'Available'");
+        const { rows: maintenance } = await pool.query("SELECT COUNT(*) as count FROM vehicles WHERE status = 'In Shop'");
 
         res.json({
-            total: total[0].count,
-            active: active[0].count,
-            available: available[0].count,
-            maintenance: maintenance[0].count,
-            utilizationRate: total[0].count > 0 ? Math.round((active[0].count / total[0].count) * 100) : 0
+            total: parseInt(total[0].count),
+            active: parseInt(active[0].count),
+            available: parseInt(available[0].count),
+            maintenance: parseInt(maintenance[0].count),
+            utilizationRate: parseInt(total[0].count) > 0 ? Math.round((parseInt(active[0].count) / parseInt(total[0].count)) * 100) : 0
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -600,7 +573,7 @@ app.get('/api/reports/fleet-utilization', requireAuth, async (req, res) => {
 // ==================== FILTERS FOR DROPDOWNS ====================
 app.get('/api/vehicles/available', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute("SELECT id, reg_number, name, max_load_capacity FROM vehicles WHERE status = 'Available' AND status != 'Retired' AND status != 'In Shop'");
+        const { rows } = await pool.query("SELECT id, reg_number, name, max_load_capacity FROM vehicles WHERE status = 'Available' AND status != 'Retired' AND status != 'In Shop'");
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -609,7 +582,7 @@ app.get('/api/vehicles/available', requireAuth, async (req, res) => {
 
 app.get('/api/drivers/available', requireAuth, async (req, res) => {
     try {
-        const [rows] = await pool.execute("SELECT id, name, license_number, license_expiry FROM drivers WHERE status = 'Available' AND license_expiry > CURDATE()");
+        const { rows } = await pool.query("SELECT id, name, license_number, license_expiry FROM drivers WHERE status = 'Available' AND license_expiry > CURRENT_DATE");
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -618,7 +591,6 @@ app.get('/api/drivers/available', requireAuth, async (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`TransitOps server running on http://localhost:${PORT}`);
-    console.log('Make sure MySQL is running and database is created!');
-    console.log('Run: npm run setup');
+    console.log(`TransitOps server running on port ${PORT}`);
+    console.log('Database: PostgreSQL (Render compatible)');
 });

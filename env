@@ -1,5 +1,15 @@
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=transitops
+# Local Development (comment out when deploying to Render)
+# DB_HOST=localhost
+# DB_USER=postgres
+# DB_PASSWORD=
+# DB_NAME=transitops
+# DB_PORT=5432
+
+# Render PostgreSQL (auto-set by Render, or paste your Internal Database URL here)
+DATABASE_URL=
+
+# Session Secret (generate a random string for production)
+SESSION_SECRET=transitops-hackathon-secret-2024
+
+# Server Port (Render sets this automatically)
 PORT=3000
